@@ -1119,7 +1119,8 @@ where
             .iter()
             .any(|fame| matches!(fame, Ok(WitnessFamousness::Yes)));
 
-        // TODO: cache?
+        // cache doesn't seem to help here, since `is_famous_witness` is already cached
+        // and this function is not so heavy
         Ok(WitnessUniqueFamousness::from_famousness(fame, unique))
     }
 
