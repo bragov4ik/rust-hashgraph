@@ -1310,14 +1310,12 @@ impl<'a, T, G, P> AncestorIter<'a, T, G, P> {
         if self.visited_events.contains(event_hash) {
             return;
         }
-        if self
-            .round_of
-            .get(event_hash)
-            .expect("All tracked events must have round decided")
-            < &self.min_round
-        {
-            return;
+        if let Some(event_round) = self.round_of.get(event_hash) {
+            if event_round < &self.min_round {
+                return;
+            }
         }
+
         let mut event = self.all_events.get(event_hash).unwrap();
 
         loop {
@@ -1329,14 +1327,11 @@ impl<'a, T, G, P> AncestorIter<'a, T, G, P> {
                     // We've already visited all of its self ancestors
                     break;
                 }
-                if self
-                    .round_of
-                    .get(self_parent)
-                    .expect("All tracked events must have round decided")
-                    < &self.min_round
-                {
-                    // All other self ancestors will have round less than `min_round`
-                    break;
+                if let Some(self_parent_round) = self.round_of.get(self_parent) {
+                    if self_parent_round < &self.min_round {
+                        // All other self ancestors will have round less than `min_round`
+                        break;
+                    }
                 }
                 event = self.all_events.get(self_parent).unwrap();
             } else {
