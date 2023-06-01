@@ -326,7 +326,7 @@ fn test_ancestor_iter() {
     let cases = vec![
         (
             graph
-                .ancestor_iter(&peers.get("b").unwrap().events[3])
+                .ancestor_iter(&peers.get("b").unwrap().events[3], 0)
                 .unwrap(),
             HashSet::<_>::from_iter(
                 [
@@ -341,7 +341,7 @@ fn test_ancestor_iter() {
         (
             // debugging b3 not being witness
             graph
-                .ancestor_iter(&peers.get("b").unwrap().events[6])
+                .ancestor_iter(&peers.get("b").unwrap().events[6], 0)
                 .unwrap(),
             HashSet::<_>::from_iter(
                 [
@@ -349,6 +349,37 @@ fn test_ancestor_iter() {
                     &peers.get("b").unwrap().events[0..7],
                     &peers.get("c").unwrap().events[0..2],
                     &peers.get("d").unwrap().events[0..7],
+                ]
+                .concat()
+                .into_iter(),
+            ),
+        ),
+        (
+            // debugging b3 not being witness
+            graph
+                .ancestor_iter(&peers.get("b").unwrap().events[6], 0)
+                .unwrap(),
+            HashSet::<_>::from_iter(
+                [
+                    &peers.get("a").unwrap().events[0..5],
+                    &peers.get("b").unwrap().events[0..7],
+                    &peers.get("c").unwrap().events[0..2],
+                    &peers.get("d").unwrap().events[0..7],
+                ]
+                .concat()
+                .into_iter(),
+            ),
+        ),
+        (
+            graph
+                .ancestor_iter(&peers.get("b").unwrap().events[11], 2)
+                .unwrap(),
+            HashSet::<_>::from_iter(
+                [
+                    &peers.get("a").unwrap().events[5..],
+                    &peers.get("b").unwrap().events[6..],
+                    &peers.get("c").unwrap().events[3..],
+                    &peers.get("d").unwrap().events[7..],
                 ]
                 .concat()
                 .into_iter(),

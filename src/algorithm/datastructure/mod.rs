@@ -778,13 +778,14 @@ where
         &self.self_id
     }
 
-    /// Iterator over ancestors of the event
+    /// Iterator over ancestors of the event whose round number is `>= min_round`
     fn ancestor_iter<'a>(
         &'a self,
         event_hash: &'a event::Hash,
+        min_round: usize,
     ) -> Option<AncestorIter<TPayload, TGenesisPayload, TPeerId>> {
         let event = self.all_events.get(event_hash)?;
-        let mut e_iter = AncestorIter::new(&self.all_events, event_hash);
+        let mut e_iter = AncestorIter::new(&self.all_events, &self.round_of, event_hash, min_round);
 
         if let event::Kind::Regular(_) = event.kind() {
             e_iter.push_self_ancestors(event_hash)
@@ -1232,7 +1233,18 @@ where
         let _x = self.all_events.get(target).unwrap();
         let _y = self.all_events.get(potential_ancestor).unwrap();
 
-        self.ancestor_iter(target)
+        // Use round number as a heuristic to not check all events:
+        // Round number of any event is not less than round number of its parents.
+        // Transitively it's true for ancestors:
+        // Round number of any event is not less than round number of its ancestors.
+
+        // Therefore, we know that we don't need to iterate over events with round
+        // nubmer < `round_of(potential_ancestor)`. It's because the `potential_ancestor`
+        // is definitely not in any of their ancestors (due to the property)
+
+        let potential_ancestor_round = self.round_of(potential_ancestor);
+
+        self.ancestor_iter(target, potential_ancestor_round)
             .unwrap()
             .any(|e| e.inner().hash() == potential_ancestor)
     }
@@ -1249,9 +1261,13 @@ where
     /// Target is ancestor of observer, for reference
     fn strongly_see(&self, observer: &event::Hash, target: &event::Hash) -> bool {
         // TODO: Check fork conditions
-        // todo: optimize
+
+        // don't need to check events $z$ for $see(observer, z) && see(z, target)$
+        // if round of $z$ is less than round of target (it means $z$ definitely
+        // can't see `target`)
+        let target_round = self.round_of(target);
         let authors_seen = self
-            .ancestor_iter(observer)
+            .ancestor_iter(observer, target_round)
             .unwrap()
             .filter(|e| self.see(&e.inner().hash(), target))
             .fold(HashSet::new(), |mut set, event| {
@@ -1267,18 +1283,24 @@ where
 struct AncestorIter<'a, T, G, P> {
     event_list: Vec<&'a EventWrapper<T, G, P>>,
     all_events: &'a HashMap<event::Hash, EventWrapper<T, G, P>>,
+    round_of: &'a HashMap<event::Hash, RoundNum>,
     visited_events: HashSet<&'a event::Hash>,
+    min_round: RoundNum,
 }
 
 impl<'a, T, G, P> AncestorIter<'a, T, G, P> {
     fn new(
         all_events: &'a HashMap<event::Hash, EventWrapper<T, G, P>>,
+        round_of: &'a HashMap<event::Hash, RoundNum>,
         ancestors_of: &'a event::Hash,
+        min_round: RoundNum,
     ) -> Self {
-        let mut iter = AncestorIter {
+        let mut iter = Self {
             event_list: vec![],
-            all_events: all_events,
+            all_events,
+            round_of,
             visited_events: HashSet::new(),
+            min_round,
         };
         iter.push_self_ancestors(ancestors_of);
         iter
@@ -1286,6 +1308,14 @@ impl<'a, T, G, P> AncestorIter<'a, T, G, P> {
 
     fn push_self_ancestors(&mut self, event_hash: &'a event::Hash) {
         if self.visited_events.contains(event_hash) {
+            return;
+        }
+        if self
+            .round_of
+            .get(event_hash)
+            .expect("All tracked events must have round decided")
+            < &self.min_round
+        {
             return;
         }
         let mut event = self.all_events.get(event_hash).unwrap();
@@ -1297,6 +1327,15 @@ impl<'a, T, G, P> AncestorIter<'a, T, G, P> {
             if let event::Kind::Regular(Parents { self_parent, .. }) = event.kind() {
                 if self.visited_events.contains(self_parent) {
                     // We've already visited all of its self ancestors
+                    break;
+                }
+                if self
+                    .round_of
+                    .get(self_parent)
+                    .expect("All tracked events must have round decided")
+                    < &self.min_round
+                {
+                    // All other self ancestors will have round less than `min_round`
                     break;
                 }
                 event = self.all_events.get(self_parent).unwrap();
