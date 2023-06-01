@@ -1288,6 +1288,13 @@ where
         } else {
             WitnessStatus::WitnessUniquenessDecided(WitnessUniqueness::NotUnique)
         };
+
+        // actually this cache doesn't seem to improve the performance.
+        // in some cases, the performance drops by a few percents,
+        // in other, it increases by the same amount.
+        // Overall, not a reasonable improvement, considering a mess
+        // it introduced with types for witness statuses
+
         // cache result
         self.witnesses
             .lock()
