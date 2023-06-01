@@ -183,7 +183,6 @@ impl<TPayload, TGenesisPayload, TPeerId> EventWrapper<TPayload, TGenesisPayload,
 }
 
 impl<TPayload, TGenesisPayload, TPeerId> EventWrapper<TPayload, TGenesisPayload, TPeerId> {
-    // TODO: actually have signature
     pub fn hash(&self) -> &Hash {
         self.inner.hash()
     }
@@ -459,7 +458,6 @@ impl From<Vec<Hash>> for SelfChild {
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Debug)]
 pub struct Parents {
     pub self_parent: Hash,
-    // TODO: check that can be same as `self_parent` or allow none
     pub other_parent: Hash,
 }
 
