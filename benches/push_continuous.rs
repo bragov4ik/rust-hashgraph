@@ -63,10 +63,10 @@ fn criterion_benchmark(c: &mut Criterion) {
             let n_events = i * 20;
             group.bench_with_input(
                 BenchmarkId::new("push_event", format!("{} events", n_events)),
-                &(n_peers, n_events),
-                |b, (n_peers, n_events)| {
+                &(n_events),
+                |b, n_events| {
                     b.iter(|| {
-                        push_events_into_empty_graph(black_box(*n_peers), black_box(*n_events))
+                        push_events_into_empty_graph(black_box(n_peers), black_box(*n_events))
                     })
                 },
             );
